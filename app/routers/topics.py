@@ -10,6 +10,8 @@ router = APIRouter(prefix="/topics", tags=["Topics"])
 
 @router.post("", response_model=TopicResponse)
 def create_topic(topic_in: TopicCreate, db: Session = Depends(get_db)):
+    if db.query(Topic).filter(Topic.name == topic_in.name).first():
+        raise HTTPException(status_code=400, detail="Topic already exists")
     db_topic = Topic(**topic_in.model_dump())
     db.add(db_topic)
     db.commit()

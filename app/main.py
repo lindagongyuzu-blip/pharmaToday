@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
@@ -22,4 +22,4 @@ def health_db_check(db: Session = Depends(get_db)):
         db.execute(text("SELECT 1"))
         return {"status": "ok", "db": "connected"}
     except Exception as e:
-        return {"status": "error", "db": str(e)}
+        raise HTTPException(status_code=500, detail={"status": "error", "db": str(e)})

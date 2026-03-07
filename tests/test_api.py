@@ -61,7 +61,7 @@ def test_create_and_read_claim():
     # Test Claim Create
     res = client.post(
         f"/topics/{topic_id}/claims", 
-        json={"text": "This drug works.", "topic_id": topic_id}
+        json={"text": "This drug works."}
     )
     assert res.status_code == 200
     claim = res.json()
@@ -80,7 +80,7 @@ def test_evidence_strength_server_side_rule():
     topic_id = res.json()["id"]
     res = client.post(
         f"/topics/{topic_id}/claims", 
-        json={"text": "Claim for Evidence", "topic_id": topic_id}
+        json={"text": "Claim for Evidence"}
     )
     claim_id = res.json()["id"]
 
@@ -90,8 +90,7 @@ def test_evidence_strength_server_side_rule():
         json={
             "source_type": "REGULATORY",
             "source_url": "https://fda.gov/test",
-            "extracted_summary": "Should be high",
-            "claim_id": claim_id
+            "extracted_summary": "Should be high"
         }
     )
     assert res.status_code == 200
@@ -104,12 +103,45 @@ def test_evidence_strength_server_side_rule():
         json={
             "source_type": "MEDIA",
             "source_url": "https://news.com/test",
-            "extracted_summary": "Should be low",
-            "claim_id": claim_id
+            "extracted_summary": "Should be low"
         }
     )
     assert res.status_code == 200
     assert res.json()["evidence_strength"] == "LOW"
+
+def test_evidence_ordering():
+    res = client.post("/topics", json={"name": "Topic Ordering"})
+    topic_id = res.json()["id"]
+    res = client.post(f"/topics/{topic_id}/claims", json={"text": "Ordering Claim"})
+    claim_id = res.json()["id"]
+
+    # Submit LOW first
+    client.post(
+        f"/claims/{claim_id}/evidence",
+        json={
+            "source_type": "MEDIA",
+            "source_url": "https://news.com/test",
+            "extracted_summary": "Low first"
+        }
+    )
+
+    # Submit HIGH second
+    client.post(
+        f"/claims/{claim_id}/evidence",
+        json={
+            "source_type": "REGULATORY",
+            "source_url": "https://fda.gov/test",
+            "extracted_summary": "High second"
+        }
+    )
+
+    # GET and assert HIGH appears before LOW
+    res = client.get(f"/claims/{claim_id}/evidence")
+    assert res.status_code == 200
+    evidence_list = res.json()
+    assert len(evidence_list) == 2
+    assert evidence_list[0]["evidence_strength"] == "HIGH"
+    assert evidence_list[1]["evidence_strength"] == "LOW"
 
 def test_judgment_validation_and_review_queue():
     # Setup Topic & Claim
@@ -117,7 +149,7 @@ def test_judgment_validation_and_review_queue():
     topic_id = res.json()["id"]
     res = client.post(
         f"/topics/{topic_id}/claims", 
-        json={"text": "Judgment valid claim", "topic_id": topic_id}
+        json={"text": "Judgment valid claim"}
     )
     claim_id = res.json()["id"]
     
@@ -127,8 +159,7 @@ def test_judgment_validation_and_review_queue():
         json={
             "user_id": 1,
             "decision": "ACCEPT",
-            "confidence": "HIGH",
-            "claim_id": claim_id
+            "confidence": "HIGH"
             # Missing reason_tag
         }
     )
@@ -141,8 +172,7 @@ def test_judgment_validation_and_review_queue():
             "user_id": 1,
             "decision": "ACCEPT",
             "confidence": "HIGH",
-            "reason_tag": "Because I said so",
-            "claim_id": claim_id
+            "reason_tag": "Because I said so"
         }
     )
     assert res.status_code == 200
@@ -155,8 +185,7 @@ def test_judgment_validation_and_review_queue():
         json={
             "user_id": 2, 
             "decision": "UNSURE", 
-            "confidence": "LOW",
-            "claim_id": claim_id
+            "confidence": "LOW"
         }
     )
     res = client.get(f"/claims/{claim_id}/judgments")

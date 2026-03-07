@@ -6,13 +6,13 @@ from app.models.fact import SourceType, EvidenceStrength
 # Evidence Schemas
 class EvidenceBase(BaseModel):
     source_type: SourceType
-    source_url: str
+    source_url: str = Field(..., min_length=1, pattern=r"^\s*\S")
     source_title: Optional[str] = None
     extracted_summary: str
     published_date: Optional[date] = None
 
 class EvidenceCreate(EvidenceBase):
-    claim_id: int
+    pass
 
 class EvidenceResponse(EvidenceBase):
     id: int
@@ -27,7 +27,7 @@ class ClaimBase(BaseModel):
     text: str
 
 class ClaimCreate(ClaimBase):
-    topic_id: int
+    pass
 
 class ClaimResponse(ClaimBase):
     id: int

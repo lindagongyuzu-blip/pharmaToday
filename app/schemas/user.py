@@ -6,7 +6,6 @@ from app.models.user import Decision, Confidence, QueueStatus
 # UserJudgment Schemas
 class UserJudgmentBase(BaseModel):
     user_id: int
-    claim_id: int
     decision: Decision
     confidence: Confidence
     reason_tag: Optional[str] = None
