@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-from app.models.fact import Evidence
+from app.models.fact import Evidence, Claim
 from app.logic.evidence_rules import calculate_evidence_strength
+from app.logic.topic_rules import update_topic_conflict
 
 def submit_evidence(claim_id: int, evidence_data: dict, db: Session) -> Evidence:
     """
@@ -8,6 +9,7 @@ def submit_evidence(claim_id: int, evidence_data: dict, db: Session) -> Evidence
     - Sets claim_id
     - Calculates evidence strength
     - Persists to database
+    - Updates topic conflict flag
     """
     evidence_data["claim_id"] = claim_id
     
@@ -20,6 +22,12 @@ def submit_evidence(claim_id: int, evidence_data: dict, db: Session) -> Evidence
     
     db_evidence = Evidence(**evidence_data)
     db.add(db_evidence)
+    db.flush()
+    
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+    if claim:
+        update_topic_conflict(claim.topic_id, db)
+        
     db.commit()
     db.refresh(db_evidence)
     return db_evidence

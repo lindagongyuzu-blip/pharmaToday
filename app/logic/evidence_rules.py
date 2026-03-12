@@ -1,4 +1,13 @@
 from app.models.fact import SourceType, EvidenceStrength
+from sqlalchemy import case
+
+def get_evidence_sort_order(strength_col):
+    return case(
+        (strength_col == EvidenceStrength.HIGH, 1),
+        (strength_col == EvidenceStrength.MEDIUM, 2),
+        (strength_col == EvidenceStrength.LOW, 3),
+        else_=4
+    )
 
 def calculate_evidence_strength(source_type: SourceType, source_url: str) -> EvidenceStrength:
     """
