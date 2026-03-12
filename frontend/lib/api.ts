@@ -2,6 +2,18 @@ import { Topic, Claim, Evidence, UserJudgment, ReviewQueueItem, CounterQuery, Cr
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
+export class ApiError extends Error {
+  status: number;
+  data?: any;
+
+  constructor(status: number, message: string, data?: any) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
@@ -11,13 +23,14 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
     },
   });
   if (!res.ok) {
-    if (res.status === 404) {
-      const error = new Error("Not Found");
-      (error as any).status = 404;
-      throw error;
+    let errorData = null;
+    try {
+      errorData = await res.json();
+    } catch (err) {
+      // Ignored if response is not JSON
     }
-    const errorData = await res.json().catch(() => null);
-    throw new Error(errorData?.detail || `API request failed: ${res.statusText}`);
+    const message = errorData?.detail || `API request failed: ${res.statusText}`;
+    throw new ApiError(res.status, message, errorData);
   }
   return res.json();
 }
@@ -44,8 +57,8 @@ export const api = {
   getPrimarySource: async (claimId: number) => {
     try {
       return await fetchApi<Evidence>(`/claims/${claimId}/primary_source`);
-    } catch (e: any) {
-      if (e.status === 404) return null;
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return null;
       throw e;
     }
   },
