@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.database import get_db
 from app.models.fact import Claim
-from app.models.user import UserJudgment, Decision, Confidence, ReviewQueue
+from app.models.user import UserJudgment
 from app.schemas.user import UserJudgmentCreate, UserJudgmentResponse
 from app.logic.judgment_service import submit_judgment
 from app.routers.dependencies import get_claim_or_404

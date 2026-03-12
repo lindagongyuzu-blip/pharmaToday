@@ -20,14 +20,18 @@ def submit_evidence(claim_id: int, evidence_data: dict, db: Session) -> Evidence
     )
     evidence_data["evidence_strength"] = assigned_strength
     
-    db_evidence = Evidence(**evidence_data)
-    db.add(db_evidence)
-    db.flush()
-    
-    claim = db.query(Claim).filter(Claim.id == claim_id).first()
-    if claim:
-        update_topic_conflict(claim.topic_id, db)
+    try:
+        db_evidence = Evidence(**evidence_data)
+        db.add(db_evidence)
+        db.flush()
         
-    db.commit()
-    db.refresh(db_evidence)
-    return db_evidence
+        claim = db.query(Claim).filter(Claim.id == claim_id).first()
+        if claim:
+            update_topic_conflict(claim.topic_id, db)
+            
+        db.commit()
+        db.refresh(db_evidence)
+        return db_evidence
+    except Exception as e:
+        db.rollback()
+        raise e

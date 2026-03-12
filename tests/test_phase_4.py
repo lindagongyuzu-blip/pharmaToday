@@ -1,13 +1,4 @@
-import pytest
-from tests.test_api import client, engine, Base
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-
-def test_counter_query_endpoint():
+def test_counter_query_endpoint(client):
     # Setup
     res = client.post("/topics", json={"name": "Test Topic Counter"})
     topic_id = res.json()["id"]
@@ -27,7 +18,7 @@ def test_counter_query_endpoint():
     assert "lawsuit" in data["counter_query"]
     assert "google.com" in data["counter_url"]
 
-def test_primary_source_endpoint():
+def test_primary_source_endpoint(client):
     # Setup
     res = client.post("/topics", json={"name": "Test Topic Primary"})
     topic_id = res.json()["id"]
@@ -57,7 +48,7 @@ def test_primary_source_endpoint():
     assert data["evidence_strength"] == "HIGH"
     assert data["source_url"] == "http://fda.gov"
 
-def test_topic_conflict_flag():
+def test_topic_conflict_flag(client):
     # Setup
     res = client.post("/topics", json={"name": "Test Topic Conflict"})
     topic_id = res.json()["id"]

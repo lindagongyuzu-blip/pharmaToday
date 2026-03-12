@@ -27,25 +27,29 @@ def submit_judgment(claim_id: int, judgment_data: dict, db: Session) -> UserJudg
     )
     judgment_data["warning"] = warning_flag
 
-    # Assemble UserJudgment Object
-    db_judgment = UserJudgment(**judgment_data)
-    db.add(db_judgment)
-    
-    # Need id for source_judgment_id, so flush but don't commit yet
-    db.flush()
-    
-    # Rule: Create ReviewQueue if HIGH confidence
-    if db_judgment.confidence == Confidence.HIGH:
-        queue_item = ReviewQueue(
-            user_id=db_judgment.user_id,
-            claim_id=claim_id,
-            review_date=calculate_review_date(),
-            source_judgment_id=db_judgment.id
-        )
-        db.add(queue_item)
+    try:
+        # Assemble UserJudgment Object
+        db_judgment = UserJudgment(**judgment_data)
+        db.add(db_judgment)
         
-    # Single unified atomic commit for both Judgment and ReviewQueue
-    db.commit()
-    db.refresh(db_judgment)
+        # Need id for source_judgment_id, so flush but don't commit yet
+        db.flush()
         
-    return db_judgment
+        # Rule: Create ReviewQueue if HIGH confidence
+        if db_judgment.confidence == Confidence.HIGH:
+            queue_item = ReviewQueue(
+                user_id=db_judgment.user_id,
+                claim_id=claim_id,
+                review_date=calculate_review_date(),
+                source_judgment_id=db_judgment.id
+            )
+            db.add(queue_item)
+            
+        # Single unified atomic commit for both Judgment and ReviewQueue
+        db.commit()
+        db.refresh(db_judgment)
+            
+        return db_judgment
+    except Exception as e:
+        db.rollback()
+        raise e

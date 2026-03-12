@@ -1,47 +1,4 @@
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.main import app
-from app.database import Base, get_db
-from app.models import fact, user   # Important to register metadata
-
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool
-)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-def override_get_db():
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-
-client = TestClient(app)
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    # Force loading of models just in case
-    from app.models.fact import Topic, Claim, Evidence
-    from app.models.user import UserJudgment, ReviewQueue
-    
-    # Print what tables are known
-    print("Tables known to Base metadata:", Base.metadata.tables.keys())
-    
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-
-def test_create_and_read_topic():
+def test_create_and_read_topic(client):
     response = client.post("/topics", json={"name": "Test Topic Alpha"})
     assert response.status_code == 200
     topic = response.json()
@@ -53,7 +10,7 @@ def test_create_and_read_topic():
     assert response.status_code == 200
     assert response.json()["id"] == topic_id
 
-def test_create_and_read_claim():
+def test_create_and_read_claim(client):
     # Setup Topic
     res = client.post("/topics", json={"name": "Test Topic Beta"})
     topic_id = res.json()["id"]
@@ -74,7 +31,7 @@ def test_create_and_read_claim():
     assert res.status_code == 200
     assert res.json()["id"] == claim_id
 
-def test_evidence_strength_server_side_rule():
+def test_evidence_strength_server_side_rule(client):
     # Setup Topic & Claim
     res = client.post("/topics", json={"name": "Test Topic Gamma"})
     topic_id = res.json()["id"]
@@ -109,7 +66,7 @@ def test_evidence_strength_server_side_rule():
     assert res.status_code == 200
     assert res.json()["evidence_strength"] == "LOW"
 
-def test_evidence_ordering():
+def test_evidence_ordering(client):
     res = client.post("/topics", json={"name": "Topic Ordering"})
     topic_id = res.json()["id"]
     res = client.post(f"/topics/{topic_id}/claims", json={"text": "Ordering Claim"})
@@ -143,7 +100,7 @@ def test_evidence_ordering():
     assert evidence_list[0]["evidence_strength"] == "HIGH"
     assert evidence_list[1]["evidence_strength"] == "LOW"
 
-def test_judgment_validation_and_review_queue():
+def test_judgment_validation_and_review_queue(client):
     # Setup Topic & Claim
     res = client.post("/topics", json={"name": "Test Topic Delta"})
     topic_id = res.json()["id"]
@@ -205,7 +162,7 @@ def test_judgment_validation_and_review_queue():
     assert res.status_code == 200
     assert res.json()["status"] == "COMPLETED"
 
-def test_phase_4_conflict_flag():
+def test_phase_4_conflict_flag(client):
     # Setup
     res = client.post("/topics", json={"name": "Test Conflict Phase 4"})
     topic_id = res.json()["id"]
@@ -242,7 +199,7 @@ def test_phase_4_conflict_flag():
     res = client.get(f"/topics/{topic_id}")
     assert res.json()["conflict_flag"] is True
 
-def test_phase_4_primary_source():
+def test_phase_4_primary_source(client):
     # Setup
     res = client.post("/topics", json={"name": "Test Primary Phase 4"})
     topic_id = res.json()["id"]
@@ -282,7 +239,7 @@ def test_phase_4_primary_source():
     assert res.json()["evidence_strength"] == "HIGH"
     assert res.json()["id"] == res_high.json()["id"]
 
-def test_phase_4_counter_query():
+def test_phase_4_counter_query(client):
     # Setup
     res = client.post("/topics", json={"name": "Test Counter Phase 4"})
     topic_id = res.json()["id"]

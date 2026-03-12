@@ -1,10 +1,19 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.routers import topics, claims, evidence, judgments, review_queue
 
 app = FastAPI(title="Pharma Intelligence Reasoning Tool")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(topics.router)
 app.include_router(claims.router)
