@@ -239,6 +239,56 @@ def test_phase_4_primary_source(client):
     assert res.json()["evidence_strength"] == "HIGH"
     assert res.json()["id"] == res_high.json()["id"]
 
+def test_claim_insight_rules(client):
+    res = client.post("/topics", json={"name": "Test Insight Phase Phase 4"})
+    topic_id = res.json()["id"]
+    
+    # Rule 1 / Rule 7: No evidence -> INSUFFICIENT_EVIDENCE & correct JSON shape
+    res = client.post(f"/topics/{topic_id}/claims", json={"text": "Insight Check Rule 1"})
+    claim_id = res.json()["id"]
+    res = client.get(f"/claims/{claim_id}/insight")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["claim_id"] == claim_id
+    assert data["has_conflict"] is False
+    assert data["guidance_label"] == "INSUFFICIENT_EVIDENCE"
+    assert data["coverage"]["total"] == 0
+    
+    # Rule 2: Only low evidence -> INSUFFICIENT_EVIDENCE
+    res = client.post(f"/topics/{topic_id}/claims", json={"text": "Insight Check Rule 2"})
+    claim_id = res.json()["id"]
+    client.post(f"/claims/{claim_id}/evidence", json={"source_type": "MEDIA", "source_url": "http://news.com", "extracted_summary": "Just a rumour"})
+    res = client.get(f"/claims/{claim_id}/insight")
+    assert res.json()["guidance_label"] == "INSUFFICIENT_EVIDENCE"
+    assert res.json()["coverage"]["total"] == 1
+    
+    # Rule 3: Medium evidence only -> LIMITED_SUPPORT
+    res = client.post(f"/topics/{topic_id}/claims", json={"text": "Insight Check Rule 3"})
+    claim_id = res.json()["id"]
+    client.post(f"/claims/{claim_id}/evidence", json={"source_type": "PATENT", "source_url": "http://patent.com", "extracted_summary": "Medium patent signal"})
+    res = client.get(f"/claims/{claim_id}/insight")
+    assert res.json()["guidance_label"] == "LIMITED_SUPPORT"
+    assert res.json()["coverage"]["medium"] == 1
+    
+    # Rule 4 & 6: At least one high evidence and no conflict -> STRONG_SUPPORT and coverage tally checks out
+    res = client.post(f"/topics/{topic_id}/claims", json={"text": "Insight Check Rule 4 and 6"})
+    claim_id = res.json()["id"]
+    client.post(f"/claims/{claim_id}/evidence", json={"source_type": "REGULATORY", "source_url": "http://fda.gov", "extracted_summary": "met primary endpoint effectively"})
+    client.post(f"/claims/{claim_id}/evidence", json={"source_type": "MEDIA", "source_url": "http://news.com", "extracted_summary": "Something low"})
+    res = client.get(f"/claims/{claim_id}/insight")
+    assert res.json()["guidance_label"] == "STRONG_SUPPORT"
+    assert res.json()["has_conflict"] is False
+    assert res.json()["coverage"]["high"] == 1
+    assert res.json()["coverage"]["low"] == 1
+    assert res.json()["coverage"]["total"] == 2
+    
+    # Rule 5: Positive + Negative signals under same claim -> CONFLICTING_EVIDENCE
+    client.post(f"/claims/{claim_id}/evidence", json={"source_type": "REGULATORY", "source_url": "http://fda.gov", "extracted_summary": "received a crl abruptly"})
+    res = client.get(f"/claims/{claim_id}/insight")
+    assert res.json()["has_conflict"] is True
+    assert res.json()["guidance_label"] == "CONFLICTING_EVIDENCE"
+
+
 def test_phase_4_counter_query(client):
     # Setup
     res = client.post("/topics", json={"name": "Test Counter Phase 4"})

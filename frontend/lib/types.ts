@@ -73,3 +73,16 @@ export interface CreateJudgmentInput {
   confidence: string;
   reason_tag?: string;
 }
+
+export interface ClaimInsight {
+  claim_id: number;
+  coverage: {
+    high: number;
+    medium: number;
+    low: number;
+    total: number;
+  };
+  has_conflict: boolean;
+  guidance_label: string;
+  guidance_text: string;
+}

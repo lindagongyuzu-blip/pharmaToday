@@ -1,4 +1,4 @@
-import { Topic, Claim, Evidence, UserJudgment, ReviewQueueItem, CounterQuery, CreateTopicInput, CreateClaimInput, CreateEvidenceInput, CreateJudgmentInput } from "./types";
+import { Topic, Claim, Evidence, UserJudgment, ReviewQueueItem, CounterQuery, CreateTopicInput, CreateClaimInput, CreateEvidenceInput, CreateJudgmentInput, ClaimInsight } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -63,6 +63,7 @@ export const api = {
     }
   },
   getCounterQuery: (claimId: number) => fetchApi<CounterQuery>(`/claims/${claimId}/counter_query`),
+  getClaimInsight: (claimId: number) => fetchApi<ClaimInsight>(`/claims/${claimId}/insight`),
 
   // Judgments & Review Queue
   getJudgmentsByClaim: (claimId: number) => fetchApi<UserJudgment[]>(`/claims/${claimId}/judgments`),

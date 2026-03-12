@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { Claim, Evidence, UserJudgment, CounterQuery } from "@/lib/types";
+import { Claim, Evidence, UserJudgment, CounterQuery, ClaimInsight } from "@/lib/types";
 import Navbar from "@/components/Navbar";
-import { AlertTriangle, ChevronLeft, Activity, ShieldAlert, Award, Search } from "lucide-react";
+import { AlertTriangle, ChevronLeft, Activity, ShieldAlert, Award, Search, FileText } from "lucide-react";
 
 export default function ClaimDetailPage() {
   const { claimId } = useParams() as { claimId: string };
@@ -17,6 +17,7 @@ export default function ClaimDetailPage() {
   const [judgments, setJudgments] = useState<UserJudgment[]>([]);
   const [primarySource, setPrimarySource] = useState<Evidence | null>(null);
   const [counterQuery, setCounterQuery] = useState<CounterQuery | null>(null);
+  const [insight, setInsight] = useState<ClaimInsight | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,18 +40,20 @@ export default function ClaimDetailPage() {
     try {
       setLoading(true);
       const cId = Number(claimId);
-      const [claimData, evData, jmData, psData, cqData] = await Promise.all([
+      const [claimData, evData, jmData, psData, cqData, inData] = await Promise.all([
         api.getClaim(cId),
         api.getEvidenceByClaim(cId),
         api.getJudgmentsByClaim(cId),
         api.getPrimarySource(cId),
-        api.getCounterQuery(cId)
+        api.getCounterQuery(cId),
+        api.getClaimInsight(cId)
       ]);
       setClaim(claimData);
       setEvidence(evData);
       setJudgments(jmData);
       setPrimarySource(psData);
       setCounterQuery(cqData);
+      setInsight(inData);
       setError(null);
     } catch (err: any) {
       setError(err.message);
@@ -161,7 +164,55 @@ export default function ClaimDetailPage() {
           )}
 
           {/* Reasoning Highlights */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {/* Claim Insight */}
+            <div className="bg-purple-50 shadow-sm rounded-lg border border-purple-100 overflow-hidden">
+               <div className="px-4 py-3 bg-purple-100 border-b border-purple-200 flex items-center gap-2">
+                <FileText className="h-5 w-5 text-purple-700" />
+                <h3 className="text-sm font-semibold text-purple-900">Evidence Insight</h3>
+              </div>
+              <div className="p-4 flex flex-col justify-between h-[calc(100%-45px)]">
+                {insight ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                       <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-bold ring-1 ring-inset ${
+                         insight.guidance_label === 'STRONG_SUPPORT' ? 'bg-green-50 text-green-700 ring-green-600/20' : 
+                         insight.guidance_label === 'LIMITED_SUPPORT' ? 'bg-yellow-50 text-yellow-800 ring-yellow-600/20' : 
+                         insight.guidance_label === 'CONFLICTING_EVIDENCE' ? 'bg-red-50 text-red-700 ring-red-600/20' : 
+                         'bg-gray-50 text-gray-600 ring-gray-500/10'}`}>
+                         {insight.guidance_label.replace('_', ' ')}
+                       </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 gap-2 text-center text-xs font-medium">
+                      <div className="bg-white rounded border border-purple-100 p-1">
+                        <div className="text-slate-500 text-[10px] uppercase">High</div>
+                        <div className="text-purple-900">{insight.coverage.high}</div>
+                      </div>
+                      <div className="bg-white rounded border border-purple-100 p-1">
+                        <div className="text-slate-500 text-[10px] uppercase">Med</div>
+                        <div className="text-purple-900">{insight.coverage.medium}</div>
+                      </div>
+                      <div className="bg-white rounded border border-purple-100 p-1">
+                        <div className="text-slate-500 text-[10px] uppercase">Low</div>
+                        <div className="text-purple-900">{insight.coverage.low}</div>
+                      </div>
+                      <div className="bg-purple-100 rounded border border-purple-200 p-1 font-bold">
+                        <div className="text-purple-700 text-[10px] uppercase">Tot</div>
+                        <div className="text-purple-900">{insight.coverage.total}</div>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-purple-900/80 bg-white/50 p-2 rounded border border-purple-50 italic">
+                      {insight.guidance_text}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-purple-800/60 italic text-center py-4">Generating insights...</p>
+                )}
+              </div>
+            </div>
             
             {/* Primary Source */}
             <div className="bg-blue-50 shadow-sm rounded-lg border border-blue-100 overflow-hidden">

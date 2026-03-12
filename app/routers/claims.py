@@ -51,3 +51,8 @@ def get_primary_source_endpoint(claim: Claim = Depends(get_claim_or_404), db: Se
 def get_counter_query_endpoint(claim: Claim = Depends(get_claim_or_404)):
     return generate_counter_query(claim.text)
 
+from app.logic.insight_rules import get_claim_insight
+
+@router.get("/claims/{claim_id}/insight")
+def get_claim_insight_endpoint(claim: Claim = Depends(get_claim_or_404), db: Session = Depends(get_db)):
+    return get_claim_insight(claim.id, db)
