@@ -35,3 +35,20 @@ def submit_evidence(claim_id: int, evidence_data: dict, db: Session) -> Evidence
     except Exception as e:
         db.rollback()
         raise e
+
+def delete_evidence_service(evidence_id: int, db: Session):
+    ev = db.query(Evidence).filter(Evidence.id == evidence_id).first()
+    if not ev:
+        return None
+        
+    topic_id = db.query(Claim.topic_id).filter(Claim.id == ev.claim_id).scalar()
+    
+    try:
+        db.delete(ev)
+        db.flush()
+        update_topic_conflict(topic_id, db)
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        raise e

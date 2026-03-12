@@ -29,3 +29,12 @@ def get_topic(topic_id: int, db: Session = Depends(get_db)):
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
     return topic
+
+from app.logic.topic_service import delete_topic_service
+
+@router.delete("/{topic_id}")
+def delete_topic_endpoint(topic_id: int, db: Session = Depends(get_db)):
+    success = delete_topic_service(topic_id, db)
+    if not success:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    return {"status": "deleted", "entity": "topic", "id": topic_id}

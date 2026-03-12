@@ -20,6 +20,7 @@ export default function TopicDetailPage() {
   // Form State
   const [newClaimText, setNewClaimText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = async () => {
     try {
@@ -54,6 +55,18 @@ export default function TopicDetailPage() {
       setError(err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTopic = async () => {
+    if (!window.confirm("Delete this topic and all related claims, evidence, judgments, and review items?")) return;
+    try {
+      setDeleting(true);
+      await api.deleteTopic(Number(topicId));
+      router.push("/");
+    } catch (err: any) {
+      setError("Delete topic error: " + err.message);
+      setDeleting(false);
     }
   };
 
@@ -111,11 +124,21 @@ export default function TopicDetailPage() {
               </h2>
               {topic.description && <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">{topic.description}</p>}
             </div>
-            {topic.conflict_flag && (
-              <span className="inline-flex items-center rounded-md bg-red-50 px-2.5 py-1.5 text-sm font-medium text-red-700 ring-1 ring-inset ring-red-600/20">
-                <AlertTriangle className="h-4 w-4 mr-1.5" /> Conflict Detected in Evidence
-              </span>
-            )}
+            <div className="flex space-x-4 items-center">
+              {topic.conflict_flag && (
+                <span className="inline-flex items-center rounded-md bg-amber-50 px-2.5 py-1.5 text-sm font-medium text-amber-700 ring-1 ring-inset ring-amber-600/20">
+                  <AlertTriangle className="h-4 w-4 mr-1.5" /> Conflict Detected in Evidence
+                </span>
+              )}
+              <button 
+                onClick={handleDeleteTopic} 
+                disabled={deleting} 
+                className="inline-flex items-center rounded-md bg-red-50 px-2.5 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 ring-1 ring-inset ring-red-600/20 transition-colors"
+                title="Delete Topic"
+              >
+                {deleting ? "Deleting..." : "Delete Topic"}
+              </button>
+            </div>
           </div>
         </div>
 

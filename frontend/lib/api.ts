@@ -63,7 +63,33 @@ export const api = {
     }
   },
   getCounterQuery: (claimId: number) => fetchApi<CounterQuery>(`/claims/${claimId}/counter_query`),
-  getClaimInsight: (claimId: number) => fetchApi<ClaimInsight>(`/claims/${claimId}/insight`),
+  getClaimInsight: async (claimId: number): Promise<ClaimInsight> => {
+    return fetchApi(`/claims/${claimId}/insight`);
+  },
+
+  deleteTopic: async (topicId: number): Promise<void> => {
+    return fetchApi(`/topics/${topicId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  deleteClaim: async (claimId: number): Promise<void> => {
+    return fetchApi(`/claims/${claimId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  deleteEvidence: async (evidenceId: number): Promise<void> => {
+    return fetchApi(`/evidence/${evidenceId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  reopenReviewQueueItem: async (queueId: number): Promise<ReviewQueueItem> => {
+    return fetchApi(`/review_queue/${queueId}/reopen`, {
+      method: 'POST',
+    });
+  },
 
   // Judgments & Review Queue
   getJudgmentsByClaim: (claimId: number) => fetchApi<UserJudgment[]>(`/claims/${claimId}/judgments`),

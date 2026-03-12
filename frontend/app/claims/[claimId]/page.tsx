@@ -28,6 +28,7 @@ export default function ClaimDetailPage() {
   const [sourceTitle, setSourceTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [submittingEv, setSubmittingEv] = useState(false);
+  const [deletingEv, setDeletingEv] = useState<number | null>(null);
 
   // Judgment Form State
   const MVP_USER_ID = 1; // Hardcoded ID for MVP
@@ -35,6 +36,7 @@ export default function ClaimDetailPage() {
   const [confidence, setConfidence] = useState<string>("HIGH");
   const [reasonTag, setReasonTag] = useState("");
   const [submittingJm, setSubmittingJm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const loadData = async () => {
     try {
@@ -107,6 +109,31 @@ export default function ClaimDetailPage() {
     }
   };
 
+  const handleDeleteClaim = async () => {
+    if (!window.confirm("Delete this claim and all related evidence, judgments, and review items?")) return;
+    try {
+      setDeleting(true);
+      await api.deleteClaim(Number(claimId));
+      router.push(`/topics/${claim?.topic_id}`);
+    } catch (err: any) {
+      setError("Delete claim error: " + err.message);
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteEvidence = async (id: number) => {
+    if (!window.confirm("Delete this evidence item?")) return;
+    try {
+      setDeletingEv(id);
+      await api.deleteEvidence(id);
+      await loadData();
+    } catch (err: any) {
+      setError("Delete evidence error: " + err.message);
+    } finally {
+      setDeletingEv(null);
+    }
+  };
+
   if (loading) {
     return (
       <div>
@@ -146,11 +173,21 @@ export default function ClaimDetailPage() {
               <ChevronLeft className="h-4 w-4 mr-1" /> Back to Topic
             </Link>
             
-            <div className="bg-white px-4 py-5 sm:px-6 shadow sm:rounded-lg border border-slate-200">
-              <h2 className="text-xl font-bold leading-7 text-slate-900 sm:truncate sm:tracking-tight">
-                {claim.text}
-              </h2>
-              <p className="text-xs text-slate-400 mt-2">Claim ID: {claim.id} • Registered: {new Date(claim.created_at).toLocaleDateString()}</p>
+            <div className="bg-white px-4 py-5 sm:px-6 shadow sm:rounded-lg border border-slate-200 flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-bold leading-7 text-slate-900 sm:truncate sm:tracking-tight">
+                  {claim.text}
+                </h2>
+                <p className="text-xs text-slate-400 mt-2">Claim ID: {claim.id} • Registered: {new Date(claim.created_at).toLocaleDateString()}</p>
+              </div>
+              <button 
+                onClick={handleDeleteClaim} 
+                disabled={deleting} 
+                className="ml-4 flex-shrink-0 inline-flex items-center rounded-md bg-red-50 px-2.5 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100 ring-1 ring-inset ring-red-600/20 transition-colors"
+                title="Delete Claim"
+              >
+                {deleting ? "Deleting..." : "Delete Claim"}
+              </button>
             </div>
           </div>
 
@@ -299,9 +336,18 @@ export default function ClaimDetailPage() {
                           {ev.evidence_strength}
                         </span>
                       </div>
-                      <a href={ev.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate max-w-[200px]">
-                        {ev.source_title || 'Source Link'}
-                      </a>
+                      <div className="flex items-center space-x-3">
+                        <a href={ev.source_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline truncate max-w-[200px]">
+                          {ev.source_title || 'Source Link'}
+                        </a>
+                        <button 
+                          onClick={() => handleDeleteEvidence(ev.id)}
+                          disabled={deletingEv === ev.id}
+                          className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                        >
+                          {deletingEv === ev.id ? "..." : "Delete"}
+                        </button>
+                      </div>
                     </div>
                     <p className="text-sm text-slate-700 mt-2">{ev.extracted_summary}</p>
                     <p className="text-xs text-slate-400 mt-3 text-right">Added {new Date(ev.created_at).toLocaleDateString()}</p>

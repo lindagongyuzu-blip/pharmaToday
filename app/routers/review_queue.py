@@ -27,3 +27,12 @@ def complete_review_queue_item(queue_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(item)
     return item
+
+from app.logic.review_queue_service import reopen_review_queue_item_service
+
+@router.post("/{queue_id}/reopen", response_model=ReviewQueueResponse)
+def reopen_review_queue_item_endpoint(queue_id: int, db: Session = Depends(get_db)):
+    item = reopen_review_queue_item_service(queue_id, db)
+    if not item:
+        raise HTTPException(status_code=404, detail="ReviewQueue item not found")
+    return item

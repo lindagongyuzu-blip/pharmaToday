@@ -45,6 +45,18 @@ export default function ReviewQueuePage() {
     }
   };
 
+  const handleReopen = async (id: number) => {
+    try {
+      setCompletingId(id);
+      await api.reopenReviewQueueItem(id);
+      await loadQueue();
+    } catch (err: any) {
+       setError("Reopen error: " + err.message);
+    } finally {
+      setCompletingId(null);
+    }
+  };
+
   return (
     <div>
       <Navbar />
@@ -113,14 +125,22 @@ export default function ReviewQueuePage() {
                     <td className="whitespace-nowrap px-3 py-4 text-sm text-slate-500">
                        {new Date(item.created_at).toLocaleDateString()}
                     </td>
-                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                      {item.status === 'PENDING' && (
+                    <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 space-x-2">
+                      {item.status === 'PENDING' ? (
                         <button
                           onClick={() => handleComplete(item.id)}
                           disabled={completingId === item.id}
                           className="text-white bg-slate-900 hover:bg-slate-700 disabled:bg-slate-300 rounded px-3 py-1.5 transition"
                         >
                           {completingId === item.id ? "Working..." : "Mark Complete"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleReopen(item.id)}
+                          disabled={completingId === item.id}
+                          className="text-blue-600 bg-blue-50 hover:bg-blue-100 disabled:bg-slate-100 disabled:text-slate-400 ring-1 ring-inset ring-blue-600/20 rounded px-3 py-1.5 transition"
+                        >
+                          {completingId === item.id ? "Working..." : "Reopen"}
                         </button>
                       )}
                     </td>

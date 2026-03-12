@@ -56,3 +56,12 @@ from app.logic.insight_rules import get_claim_insight
 @router.get("/claims/{claim_id}/insight")
 def get_claim_insight_endpoint(claim: Claim = Depends(get_claim_or_404), db: Session = Depends(get_db)):
     return get_claim_insight(claim.id, db)
+
+from app.logic.claim_service import delete_claim_service
+
+@router.delete("/claims/{claim_id}")
+def delete_claim_endpoint(claim_id: int, db: Session = Depends(get_db)):
+    success = delete_claim_service(claim_id, db)
+    if not success:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    return {"status": "deleted", "entity": "claim", "id": claim_id}

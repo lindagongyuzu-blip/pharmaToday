@@ -310,3 +310,98 @@ def test_phase_4_counter_query(client):
     assert "lawsuit" in data["counter_query"]
     
     assert "google.com" in data["counter_url"]
+
+def test_reversible_operations(client):
+    # Setup Topic
+    res = client.post("/topics", json={"name": "Test Reversible Topic"})
+    topic_id = res.json()["id"]
+
+    # Delete missing topic 404
+    res = client.delete("/topics/999999")
+    assert res.status_code == 404
+
+    # Setup Claim
+    res = client.post(f"/topics/{topic_id}/claims", json={"text": "Reversible Claim 1"})
+    claim_id = res.json()["id"]
+
+    # Delete missing claim 404
+    res = client.delete("/claims/999999")
+    assert res.status_code == 404
+
+    # Setup Evidence 1 & 2
+    res = client.post(f"/claims/{claim_id}/evidence", json={"source_type": "REGULATORY", "source_url": "http://fda.gov", "extracted_summary": "received a crl"})
+    ev1_id = res.json()["id"]
+
+    res = client.post(f"/claims/{claim_id}/evidence", json={"source_type": "MEDIA", "source_url": "http://news.com", "extracted_summary": "met primary endpoint"})
+    ev2_id = res.json()["id"]
+
+    # Check topic conflict flag is True due to both pos and neg signals
+    res = client.get(f"/topics/{topic_id}")
+    assert res.json()["conflict_flag"] is True
+
+    # Delete missing evidence 404
+    res = client.delete("/evidence/999999")
+    assert res.status_code == 404
+
+    # Delete Evidence 1 (negative signal)
+    res = client.delete(f"/evidence/{ev1_id}")
+    assert res.status_code == 200
+    assert res.json()["status"] == "deleted"
+    
+    # Check topic conflict flag updated to False
+    res = client.get(f"/topics/{topic_id}")
+    assert res.json()["conflict_flag"] is False
+
+    # Setup Judgment to spawn ReviewQueueItem
+    res = client.post(f"/claims/{claim_id}/judgment", json={"user_id": 1, "decision": "ACCEPT", "confidence": "HIGH", "reason_tag": "Valid"})
+    assert res.status_code == 200
+
+    # Get Queue item
+    res = client.get("/review_queue?user_id=1")
+    queue_items = [q for q in res.json() if q["claim_id"] == claim_id]
+    assert len(queue_items) > 0
+    queue_id = queue_items[0]["id"]
+
+    # Complete Queue item
+    res = client.post(f"/review_queue/{queue_id}/complete")
+    assert res.status_code == 200
+    assert res.json()["status"] == "COMPLETED"
+
+    # Reopen missing 404
+    res = client.post("/review_queue/999999/reopen")
+    assert res.status_code == 404
+
+    # Reopen Queue item
+    res = client.post(f"/review_queue/{queue_id}/reopen")
+    assert res.status_code == 200
+    assert res.json()["status"] == "PENDING"
+
+    # Reopen already pending
+    res = client.post(f"/review_queue/{queue_id}/reopen")
+    assert res.status_code == 200
+    assert res.json()["status"] == "PENDING"
+
+    # Now let's test claim deletion
+    res = client.delete(f"/claims/{claim_id}")
+    assert res.status_code == 200
+
+    # Verify claim is gone
+    res = client.get(f"/claims/{claim_id}")
+    assert res.status_code == 404
+
+    # Now let's test topic deletion
+    res = client.post(f"/topics/{topic_id}/claims", json={"text": "Reversible Claim 2"})
+    claim2_id = res.json()["id"]
+    client.post(f"/claims/{claim2_id}/evidence", json={"source_type": "REGULATORY", "source_url": "http://fda.gov", "extracted_summary": "received a crl"})
+    
+    # Topic delete
+    res = client.delete(f"/topics/{topic_id}")
+    assert res.status_code == 200
+
+    # Verify topic is gone
+    res = client.get(f"/topics/{topic_id}")
+    assert res.status_code == 404
+    
+    # Verify claim 2 is gone
+    res = client.get(f"/claims/{claim2_id}")
+    assert res.status_code == 404
